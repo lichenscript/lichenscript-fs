@@ -1,0 +1,14 @@
+
+@platform("js")
+import "./fs.js";
+
+@platform("native", "wasm32")
+import "./fs.h";
+
+class IOError {
+	public message: string
+
+}
+
+@external("lc_fs_read_file_content")
+public declare function readFileContent(path: string): Result<string, IOError> ;

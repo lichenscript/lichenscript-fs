@@ -1,0 +1,17 @@
+{
+  "name": "lichenscript-fs",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lichenscript/lichenscript-fs.git"
+  },
+  "author": {
+    "name": "Vincent Chan",
+    "email": "okcdz@diverse.space"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lichenscript/lichenscript-fs/issues"
+  },
+  "homepage": "https://github.com/lichenscript/lichenscript-fs#readme"
+}

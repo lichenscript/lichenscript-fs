@@ -1,0 +1,5 @@
+
+function main() {
+	const content = readFileContent("/tmp/opopp").unwrap();
+	print(content);
+}
