@@ -8,6 +8,10 @@ import "./fs.h";
 class IOError {
 	public message: string
 
+	public override toString(): string {
+		return this.message;
+	}
+
 }
 
 @external("lc_fs_read_file_content")

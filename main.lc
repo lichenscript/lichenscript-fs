@@ -1,5 +1,13 @@
 
 function main() {
-	const content = readFileContent("/tmp/opopp").unwrap();
-	print(content);
+	let path = "./package.json";
+	match readFileContent(path) {
+		case Ok(content) => print("content:", content)
+		case Error(err) => print("err:", err.toString())
+	}
+	path = "./package.jso";
+	match readFileContent(path) {
+		case Ok(content) => print("content:", content)
+		case Error(err) => print("err:", err.toString())
+	}
 }
