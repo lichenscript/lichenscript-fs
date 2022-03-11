@@ -10,7 +10,6 @@
 #include "runtime.h"
 
 static LCClassID LCC_IOError_class_id;
-static LCClassID LCC_Result_id;
 
 #define LC_FS_BLOCK_SIZE (8 * 1024)
 
@@ -66,8 +65,6 @@ static LCValue lc_fs_read_file_content(LCRuntime* rt, LCValue this, int argc, LC
 		goto fail;
 	}
 
-	LCFreeUTF8(rt, u8str);
-
 	buffer = lc_fs_read_file_into_buffer(fd, &size);
 
 	close(fd);
@@ -77,11 +74,13 @@ static LCValue lc_fs_read_file_content(LCRuntime* rt, LCValue this, int argc, LC
 		goto fail;
 	}
 
-	LCValue str = LCNewStringFromCString(rt, (const unsigned char*)buffer);
+	LCValue str = LCNewStringFromCStringLen(rt, (const unsigned char*)buffer, size);
+
+	LCFreeUTF8(rt, u8str);
 
 	free(buffer);
 
-	result =  LCNewUnionObject(rt, LCC_Result_id, 0, 1, (LCValue[]) { str });
+	result =  LCNewUnionObject(rt, LC_STD_CLS_ID_RESULT, 0, 1, (LCValue[]) { str });
 	LCRelease(rt, str);
 	return result;
 fail:
@@ -91,7 +90,7 @@ fail:
 
 	LCCast(err, LCC_IOErrorInternal*)->message = LCNewStringFromCString(rt, (const unsigned char*)error_str);
 
-	result = LCNewUnionObject(rt, LCC_Result_id, 1, 1, (LCValue[]) { err });
+	result = LCNewUnionObject(rt, LC_STD_CLS_ID_RESULT, 1, 1, (LCValue[]) { err });
 
 	LCRelease(rt, err);
 	LCFreeUTF8(rt, u8str);
