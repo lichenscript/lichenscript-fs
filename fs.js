@@ -11,3 +11,14 @@ function lc_fs_read_file_content(path) {
     }];
   }
 }
+
+function lc_fs_write_file_content(path, content) {
+  try {
+    fs.writeFileSync(path, content);
+  } catch (err) {
+    return [LCC_Result, 1, {
+      __proto__: LCC_IOError,
+      message: err.toString(),
+    }];
+  }
+}

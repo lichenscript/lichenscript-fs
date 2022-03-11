@@ -1,13 +1,20 @@
 
 function main() {
-	let path = "./package.json";
-	match readFileContent(path) {
-		case Ok(content) => print("content:", content)
-		case Error(err) => print("err:", err.toString())
-	}
-	path = "./package.jso";
-	match readFileContent(path) {
-		case Ok(content) => print("content:", content)
-		case Error(err) => print("err:", err.toString())
-	}
+  let path = "./package.json";
+  const content = match readFileContent(path) {
+    case Ok(content) => {
+      print("content:", content);
+      content
+    }
+    case Error(err) => {
+      print("err:", err.toString());
+      panic("wrong")
+    }
+  };
+  path = "./package.2.json";
+  match readFileContent(path) {
+    case Ok(content) => print("content:", content)
+    case Error(err) => print("err:", err.toString())
+  }
+  writeFileContent(path, content);
 }
