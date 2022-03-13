@@ -1,4 +1,6 @@
 
+import * from "..";
+
 function main() {
   let path = "./package.json";
   const content = match readFileContent(path) {
@@ -17,4 +19,5 @@ function main() {
     case Error(err) => print("err:", err.toString())
   }
   writeFileContent(path, content);
+  unlink(path).unwrap();
 }

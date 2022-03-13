@@ -3,14 +3,16 @@
 import "./fs.js";
 
 @platform("native", "wasm32")
+@init("lc_fs_init")
 import "./fs.h";
 
-class IOError {
-	public message: string
+@platform("native", "wasm32")
+import "./fs.c";
 
-	public override toString(): string {
-		return this.message;
-	}
+@builtin
+class IOError {
+
+  declare override toString(): string;
 
 }
 
@@ -19,3 +21,6 @@ public declare function readFileContent(path: string): Result<string, IOError> ;
 
 @external("lc_fs_write_file_content")
 public declare function writeFileContent(path: string, content: string): Result<unit, IOError> ;
+
+@external("lc_fs_unlink")
+public declare function unlink(path: string): Result<unit, IOError> ;
