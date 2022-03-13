@@ -121,9 +121,9 @@ fail:
   return result;
 }
 
-static int lc_write_file_content(int fd, const char* content) {
+static int lc_write_file_content(int fd, const char* content, size_t content_len) {
   int ec;
-  size_t len = strlen(content);
+  size_t len = content_len;
   const char* p = content;
 
   while (1) {
@@ -143,6 +143,7 @@ static int lc_write_file_content(int fd, const char* content) {
 
 LCValue lc_fs_write_file_content(LCRuntime* rt, LCValue this, int argc, LCValue* args) {
   LCValue err;
+  size_t content_len;
   const char* u8str = LCToUTF8(rt, args[0]);
   int ec;
   int size = 0;
@@ -152,9 +153,9 @@ LCValue lc_fs_write_file_content(LCRuntime* rt, LCValue this, int argc, LCValue*
     goto fail;
   }
 
-  const char* u8content = LCToUTF8(rt, args[1]);
+  const char* u8content = LCToUTF8Len(rt, &content_len, args[1]);
 
-  ec = lc_write_file_content(fd, u8content);
+  ec = lc_write_file_content(fd, u8content, content_len);
   if (ec < 0) {
     LCFreeUTF8(rt, u8content);
     close(fd);
