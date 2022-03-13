@@ -1,5 +1,15 @@
 const fs = require("fs");
 
+const LCC_IOError = {
+  __proto__: LCC_Object,
+  [clsNameSym]: "IOError",
+  toString: IOError_toString,
+}
+
+function IOError_toString() {
+  return this.message;
+}
+
 function lc_fs_read_file_content(path) {
   try {
     const data = fs.readFileSync(path, 'utf8');
@@ -15,6 +25,17 @@ function lc_fs_read_file_content(path) {
 function lc_fs_write_file_content(path, content) {
   try {
     fs.writeFileSync(path, content);
+  } catch (err) {
+    return [LCC_Result, 1, {
+      __proto__: LCC_IOError,
+      message: err.toString(),
+    }];
+  }
+}
+
+function lc_fs_unlink(path) {
+  try {
+    fs.unlinkSync(path);
   } catch (err) {
     return [LCC_Result, 1, {
       __proto__: LCC_IOError,
