@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <sys/errno.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include "fs.h"
 #include "runtime.h"
 
@@ -21,7 +23,41 @@ static LCClassDef FSIOErrorDef = {
   NULL,
 };
 
-#define MK_PTR(v, ty) (LCValue){ { .ptr_val = (LCObject*)v }, ty }
+typedef struct FSMappedFile {
+  int64_t size;
+  uintptr_t mapped_mem;
+  int fd;
+} FSMappedFile;
+
+static int lc_open_readable_mapped_mem(const char* path, FSMappedFile* mapped_file) {
+  int fd = open(path, O_RDONLY);
+  if (fd < 0) {
+    return fd;
+  }
+
+  struct stat st;
+  int ec = fstat(fd, &st);
+  if (ec < 0) {
+    return ec;
+  }
+
+  void* mapped_mem = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);;
+  if (mapped_mem == MAP_FAILED) {
+    return -1;
+  }
+
+  mapped_file->fd = fd;
+  mapped_file->mapped_mem = (uintptr_t)mapped_mem;
+  mapped_file->size = st.st_size;
+
+  return 0;
+}
+
+static void lc_close_readable_mapped_mem(FSMappedFile* mapped_file) {
+  munmap((void*)mapped_file->mapped_mem, mapped_file->size);
+  mapped_file->mapped_mem = 0;
+  close(mapped_file->fd);
+}
 
 LCValue FSIOError_toString(LCRuntime* rt, LCValue this, int arg_len, LCValue* args) {
   FSIOError* ptr = (FSIOError*)this.ptr_val;
@@ -45,68 +81,25 @@ void lc_fs_init(LCRuntime* rt) {
   LCDefineClassMethod(rt, FS_IOError_class_id, FSIOErrorMethods, countof(FSIOErrorMethods));
 }
 
-static char* lc_fs_read_file_into_buffer(int fd, int* size) {
-  int cap = (LC_FS_BLOCK_SIZE) * 2;
-  char* buffer = (char*)malloc(cap);
-  char* p = buffer;
-  ssize_t read_bytes;
-
-  while (1) {
-    read_bytes = read(fd, p, LC_FS_BLOCK_SIZE);
-    if (read_bytes == 0) {
-      break;
-    } else if (read_bytes < 0) {
-      if (size) {
-        *size = read_bytes;
-      }
-      free(buffer);
-      return NULL;
-    }
-
-    p += read_bytes;
-
-    ssize_t s = (p - buffer);
-    if ((cap - s) < LC_FS_BLOCK_SIZE) {
-      cap += LC_FS_BLOCK_SIZE;
-      buffer = (char*)realloc(buffer, cap);
-      p = buffer + s;
-    }
-  }
-
-  if (size) {
-    *size = p - buffer;
-  }
-  return buffer;
-}
-
 LCValue lc_fs_read_file_content(LCRuntime* rt, LCValue this, int argc, LCValue* args) {
   LCValue result, err;
-  char *buffer;
+  FSMappedFile mapped_file;
   const char* u8str = LCToUTF8(rt, args[0]);
-  int size = 0;
-  int fd = open(u8str, O_RDONLY);
 
-  if (fd < 0) {
+  int ec = lc_open_readable_mapped_mem(u8str, &mapped_file);
+  if (ec < 0) {
     goto fail;
   }
 
-  buffer = lc_fs_read_file_into_buffer(fd, &size);
-
-  close(fd);
-
-  if (size < 0) {
-    free(buffer);
-    goto fail;
-  }
-
-  LCValue str = LCNewStringFromCStringLen(rt, (const unsigned char*)buffer, size);
+  LCValue str = LCNewStringFromCStringLen(rt, (const unsigned char*)mapped_file.mapped_mem, mapped_file.size);
 
   LCFreeUTF8(rt, u8str);
 
-  free(buffer);
-
   result =  LCNewUnionObject(rt, LC_STD_CLS_ID_RESULT, 0, 1, (LCValue[]) { str });
   LCRelease(rt, str);
+
+  lc_close_readable_mapped_mem(&mapped_file);
+
   return result;
 fail:
   err = LCC_IOError_init(rt);
@@ -146,7 +139,6 @@ LCValue lc_fs_write_file_content(LCRuntime* rt, LCValue this, int argc, LCValue*
   size_t content_len;
   const char* u8str = LCToUTF8(rt, args[0]);
   int ec;
-  int size = 0;
   int fd = open(u8str, O_WRONLY | O_CREAT, 0666);
 
   if (fd < 0) {
@@ -178,6 +170,51 @@ fail:
   LCFreeUTF8(rt, u8str);
 
   return result;
+}
+
+LCValue lc_fs_read_file(LCRuntime* rt, LCValue this, int argc, LCValue* args) {
+  LCValue err;
+  FSMappedFile mapped_file;
+  LCValue result;
+  const char* u8str = LCToUTF8(rt, args[0]);
+
+  int ec = lc_open_readable_mapped_mem(u8str, &mapped_file);
+  if (ec < 0) {
+    goto fail;
+  }
+
+  int64_t new_cap = 2;
+
+  while (new_cap < mapped_file.size) {
+    new_cap *= 2;
+  }
+
+  LCBuffer* buffer = lc_std_new_buffer_with_cap(rt, new_cap);
+  buffer->length = mapped_file.size;
+  memcpy(buffer->data, (void*)mapped_file.mapped_mem, mapped_file.size);
+
+  LCValue buffer_val = MK_PTR(buffer, LC_TY_CLASS_OBJECT);
+
+  result =  LCNewUnionObject(rt, LC_STD_CLS_ID_RESULT, 0, 1, (LCValue[]) { buffer_val });
+  LCRelease(rt, buffer_val);
+  lc_close_readable_mapped_mem(&mapped_file);
+
+  return result;
+fail:
+  err = LCC_IOError_init(rt);
+
+  LCCast(err, FSIOError*)->code = errno;
+
+  result = LCNewUnionObject(rt, LC_STD_CLS_ID_RESULT, 1, 1, (LCValue[]) { err });
+
+  LCRelease(rt, err);
+  LCFreeUTF8(rt, u8str);
+
+  return result;
+}
+
+LCValue lc_fs_write_file(LCRuntime* rt, LCValue this, int argc, LCValue* args) {
+  return LC_NULL;
 }
 
 LCValue lc_fs_unlink(LCRuntime* rt, LCValue this, int argc, LCValue* args) {

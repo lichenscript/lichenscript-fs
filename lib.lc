@@ -22,5 +22,11 @@ public declare function readFileContent(path: string): Result<string, IOError> ;
 @external("lc_fs_write_file_content")
 public declare function writeFileContent(path: string, content: string): Result<unit, IOError> ;
 
+@external("lc_fs_read_file")
+public declare function readFile(path: string): Result<Buffer, IOError> ;
+
+@external("lc_fs_write_file")
+public declare function writeFile(path: string, content: Buffer): Result<unit, IOError> ;
+
 @external("lc_fs_unlink")
 public declare function unlink(path: string): Result<unit, IOError> ;

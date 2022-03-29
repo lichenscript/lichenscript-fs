@@ -10,6 +10,10 @@ LCValue lc_fs_read_file_content(LCRuntime* rt, LCValue this, int argc, LCValue* 
 
 LCValue lc_fs_write_file_content(LCRuntime* rt, LCValue this, int argc, LCValue* args);
 
+LCValue lc_fs_read_file(LCRuntime* rt, LCValue this, int argc, LCValue* args);
+
+LCValue lc_fs_write_file(LCRuntime* rt, LCValue this, int argc, LCValue* args);
+
 LCValue lc_fs_unlink(LCRuntime* rt, LCValue this, int argc, LCValue* args);
 
 #endif
